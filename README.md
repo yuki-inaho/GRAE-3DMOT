@@ -100,8 +100,27 @@ python validation.py -r $CHECK_POINT_PATH -d cuda:0 -o $OUTPUT_PATH
 We achieved the state-of-the art on nuScenes dataset.
 <p align="center"> <img src='docs/test.png', height="280px", width="900px"> </p>  
 
-**License**
 
+----------------------------------
+## 📢 News (2025-12-22)
+
+We have released the **processed datasets** (train / validation / test) and the **model checkpoints (.pth) corresponding to the results reported in this paper** to facilitate research convenience and reproducibility.
+
+All resources are publicly available at the following Google Drive link:  
+https://drive.google.com/drive/folders/1V-rSzUsOtOY-hoxQET8r9unDnUudks4I?usp=sharing
+
+## Dataset and Model Checkpoints
+
+The released files include:
+- Refined datasets for **train / validation / test**
+- Model checkpoints (`.pth`) from the experiments reported in this paper
+
+These materials are provided to support fair comparison and further research. If you find any bugs or issues, feel free to open an issue.
+
+----------------------------------
+
+
+**License**
 ###### Part of the code of project GRAE-3DMOT are taken from CenterPoint and 3DMOTFormer #####
 ###### Pytorch Template Project (https://github.com/victoresque/pytorch-template) #####
 ##### We plan to provide a detailed update on the license information  #####
