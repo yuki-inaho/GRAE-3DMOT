@@ -192,8 +192,12 @@ def nu_array2mot_bbox(b: DetArray) -> BBox:
     """
     quat = Quaternion(b[6:10])
     bbox = BBox(
-        x=b[0], y=b[1], z=b[2],
-        w=b[3], l=b[4], h=b[5],
+        x=b[0],
+        y=b[1],
+        z=b[2],
+        w=b[3],
+        l=b[4],
+        h=b[5],
         o=quat.yaw_pitch_roll[0],
     )
     if len(b) == 11:

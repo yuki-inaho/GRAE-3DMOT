@@ -24,11 +24,11 @@ def _box(x, y, dx, dy, heading):
 
 # (box_a, box_b, golden IoU, tolerance) — golden values verified by analysis / Monte-Carlo
 GOLDEN_BEV_IOU = [
-    (_box(0, 0, 2, 2, 0.0), _box(0, 0, 2, 2, 0.0), 1.0, 1e-9),            # identical
-    (_box(0, 0, 2, 2, 0.0), _box(1, 0, 2, 2, 0.0), 1.0 / 3.0, 1e-6),     # half-overlap
-    (_box(0, 0, 2, 2, 0.0), _box(100, 0, 2, 2, 0.0), 0.0, 1e-9),         # disjoint
+    (_box(0, 0, 2, 2, 0.0), _box(0, 0, 2, 2, 0.0), 1.0, 1e-9),  # identical
+    (_box(0, 0, 2, 2, 0.0), _box(1, 0, 2, 2, 0.0), 1.0 / 3.0, 1e-6),  # half-overlap
+    (_box(0, 0, 2, 2, 0.0), _box(100, 0, 2, 2, 0.0), 0.0, 1e-9),  # disjoint
     (_box(0, 0, 2, 2, 0.0), _box(0, 0, 2, 2, np.pi / 4), 0.7071, 2e-3),  # 45-deg octagon
-    (_box(0, 0, 6, 6, 0.2), _box(0, 0, 2, 2, 0.9), 1.0 / 9.0, 1e-6),     # containment 4/36
+    (_box(0, 0, 6, 6, 0.2), _box(0, 0, 2, 2, 0.9), 1.0 / 9.0, 1e-6),  # containment 4/36
 ]
 
 
@@ -58,7 +58,7 @@ def test_nms_golden_keep_indices():
         d.s = s
     classes = [0, 0, 0, 1]
     keep, types = nms(dets, classes, threshold_low=0.1)
-    assert [int(i) for i in keep] == [0, 3, 2]   # score-descending processing order
+    assert [int(i) for i in keep] == [0, 3, 2]  # score-descending processing order
     assert [int(t) for t in types] == [0, 1, 0]
 
 
@@ -72,8 +72,7 @@ def test_bev_iou_axis_convention_golden():
 def _model_inputs(n, t, device, d=128):
     g = torch.Generator().manual_seed(0)
     mk = lambda *s: torch.randn(*s, generator=g).to(device)
-    return (mk(n, 18), mk(n, n, 19), mk(n, n).abs().to(device),
-            mk(n, t, 12), mk(t, n).abs().to(device), mk(t, d))
+    return (mk(n, 18), mk(n, n, 19), mk(n, n).abs().to(device), mk(n, t, 12), mk(t, n).abs().to(device), mk(t, d))
 
 
 def test_model_output_shapes_and_determinism():

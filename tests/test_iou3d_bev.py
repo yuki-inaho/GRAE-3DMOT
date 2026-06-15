@@ -21,12 +21,12 @@ def _box(x, y, dx, dy, heading, z=0.0, dz=1.0):
 def _random_boxes(n, seed):
     rng = np.random.default_rng(seed)
     boxes = np.zeros((n, 7), dtype=np.float64)
-    boxes[:, 0] = rng.uniform(-5, 5, n)       # x
-    boxes[:, 1] = rng.uniform(-5, 5, n)       # y
-    boxes[:, 2] = rng.uniform(-1, 1, n)       # z
-    boxes[:, 3] = rng.uniform(1, 4, n)        # dx
-    boxes[:, 4] = rng.uniform(1, 4, n)        # dy
-    boxes[:, 5] = rng.uniform(1, 2, n)        # dz
+    boxes[:, 0] = rng.uniform(-5, 5, n)  # x
+    boxes[:, 1] = rng.uniform(-5, 5, n)  # y
+    boxes[:, 2] = rng.uniform(-1, 1, n)  # z
+    boxes[:, 3] = rng.uniform(1, 4, n)  # dx
+    boxes[:, 4] = rng.uniform(1, 4, n)  # dy
+    boxes[:, 5] = rng.uniform(1, 2, n)  # dz
     boxes[:, 6] = rng.uniform(-np.pi, np.pi, n)  # heading
     return boxes
 
@@ -161,6 +161,5 @@ def test_torch_gpu_matches_shapely():
     a = _random_boxes(8, 50)
     b = _random_boxes(8, 60)
     ref = _shapely_ref(a, b)
-    gpu = boxes_iou_bev(torch.tensor(a, dtype=torch.float32).cuda(),
-                        torch.tensor(b, dtype=torch.float32).cuda())
+    gpu = boxes_iou_bev(torch.tensor(a, dtype=torch.float32).cuda(), torch.tensor(b, dtype=torch.float32).cuda())
     np.testing.assert_allclose(gpu.cpu().numpy(), ref, atol=3e-3)

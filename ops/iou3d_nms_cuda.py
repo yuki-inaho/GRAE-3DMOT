@@ -130,12 +130,12 @@ def _corners_torch(boxes: Float[Tensor, "n 7"]) -> Float[Tensor, "n 4 2"]:
 @typecheck
 def _point_in_poly(pts: Float[Tensor, "p k 2"], poly: Float[Tensor, "p 4 2"]) -> Bool[Tensor, "p k"]:
     """Whether ``pts`` lie inside the CCW convex ``poly``; returns ``[p, k]`` bool."""
-    v0 = poly.unsqueeze(1)                       # [P, 1, 4, 2]
+    v0 = poly.unsqueeze(1)  # [P, 1, 4, 2]
     v1 = torch.roll(poly, shifts=-1, dims=1).unsqueeze(1)  # [P, 1, 4, 2]
-    edge = v1 - v0                               # [P, 1, 4, 2]
-    rel = pts.unsqueeze(2) - v0                  # [P, K, 4, 2]
+    edge = v1 - v0  # [P, 1, 4, 2]
+    rel = pts.unsqueeze(2) - v0  # [P, K, 4, 2]
     cross = edge[..., 0] * rel[..., 1] - edge[..., 1] * rel[..., 0]  # [P, K, 4]
-    return (cross >= -1e-6).all(dim=-1)          # CCW: inside => all left turns
+    return (cross >= -1e-6).all(dim=-1)  # CCW: inside => all left turns
 
 
 @typecheck
@@ -146,25 +146,25 @@ def _seg_intersections(
 
     Returns ``(points [p, 16, 2], valid [p, 16])``.
     """
-    a0 = poly_a                                  # [P, 4, 2]
+    a0 = poly_a  # [P, 4, 2]
     a1 = torch.roll(poly_a, shifts=-1, dims=1)
     b0 = poly_b
     b1 = torch.roll(poly_b, shifts=-1, dims=1)
 
-    a0 = a0.unsqueeze(2)                          # [P, 4, 1, 2]
+    a0 = a0.unsqueeze(2)  # [P, 4, 1, 2]
     a1 = a1.unsqueeze(2)
-    b0 = b0.unsqueeze(1)                          # [P, 1, 4, 2]
+    b0 = b0.unsqueeze(1)  # [P, 1, 4, 2]
     b1 = b1.unsqueeze(1)
 
-    r = a1 - a0                                   # [P, 4, 1, 2]
-    s = b1 - b0                                   # [P, 1, 4, 2]
+    r = a1 - a0  # [P, 4, 1, 2]
+    s = b1 - b0  # [P, 1, 4, 2]
     denom = r[..., 0] * s[..., 1] - r[..., 1] * s[..., 0]  # [P, 4, 4]
-    diff = b0 - a0                                # [P, 4, 4, 2]
+    diff = b0 - a0  # [P, 4, 4, 2]
     t = (diff[..., 0] * s[..., 1] - diff[..., 1] * s[..., 0]) / (denom + (denom == 0) * _EPS)
     u = (diff[..., 0] * r[..., 1] - diff[..., 1] * r[..., 0]) / (denom + (denom == 0) * _EPS)
 
     valid = (denom.abs() > _EPS) & (t >= 0) & (t <= 1) & (u >= 0) & (u <= 1)
-    pts = a0 + t.unsqueeze(-1) * r                # [P, 4, 4, 2]
+    pts = a0 + t.unsqueeze(-1) * r  # [P, 4, 4, 2]
     P = poly_a.shape[0]
     return pts.reshape(P, 16, 2), valid.reshape(P, 16)
 
@@ -173,21 +173,21 @@ def _seg_intersections(
 def _pairwise_intersection_area(poly_a: Float[Tensor, "p 4 2"], poly_b: Float[Tensor, "p 4 2"]) -> Float[Tensor, "p"]:
     """Convex intersection area for paired polygons ``[p, 4, 2]`` -> ``[p]``."""
     P = poly_a.shape[0]
-    in_a = _point_in_poly(poly_a, poly_b)         # corners of A inside B  [P, 4]
-    in_b = _point_in_poly(poly_b, poly_a)         # corners of B inside A  [P, 4]
+    in_a = _point_in_poly(poly_a, poly_b)  # corners of A inside B  [P, 4]
+    in_b = _point_in_poly(poly_b, poly_a)  # corners of B inside A  [P, 4]
     inter_pts, inter_valid = _seg_intersections(poly_a, poly_b)  # [P, 16, 2], [P, 16]
 
-    points = torch.cat([poly_a, poly_b, inter_pts], dim=1)        # [P, 24, 2]
-    valid = torch.cat([in_a, in_b, inter_valid], dim=1)           # [P, 24]
+    points = torch.cat([poly_a, poly_b, inter_pts], dim=1)  # [P, 24, 2]
+    valid = torch.cat([in_a, in_b, inter_valid], dim=1)  # [P, 24]
 
-    n_valid = valid.sum(dim=1)                                    # [P]
+    n_valid = valid.sum(dim=1)  # [P]
     # Centroid of valid points (avoid div-by-zero; masked pairs are discarded later).
     cnt = n_valid.clamp(min=1).unsqueeze(-1)
-    centroid = (points * valid.unsqueeze(-1)).sum(dim=1) / cnt    # [P, 2]
+    centroid = (points * valid.unsqueeze(-1)).sum(dim=1) / cnt  # [P, 2]
 
     ang = torch.atan2(points[..., 1] - centroid[:, 1:2], points[..., 0] - centroid[:, 0:1])  # [P, 24]
-    ang = torch.where(valid, ang, torch.full_like(ang, 1e9))      # invalid -> sort to the end
-    order = torch.argsort(ang, dim=1)                             # [P, 24]
+    ang = torch.where(valid, ang, torch.full_like(ang, 1e9))  # invalid -> sort to the end
+    order = torch.argsort(ang, dim=1)  # [P, 24]
 
     sorted_pts = torch.gather(points, 1, order.unsqueeze(-1).expand(-1, -1, 2))
     sorted_valid = torch.gather(valid, 1, order)
@@ -225,8 +225,8 @@ def boxes_iou_bev(boxes_a: Boxes, boxes_b: Float[Tensor, "m 7"], ans_iou: IoUMat
             ans_iou[...] = out
         return out
 
-    corners_a = _corners_torch(boxes_a.float())   # [N, 4, 2]
-    corners_b = _corners_torch(boxes_b.float())   # [M, 4, 2]
+    corners_a = _corners_torch(boxes_a.float())  # [N, 4, 2]
+    corners_b = _corners_torch(boxes_b.float())  # [M, 4, 2]
 
     pa = corners_a.unsqueeze(1).expand(N, M, 4, 2).reshape(N * M, 4, 2)
     pb = corners_b.unsqueeze(0).expand(N, M, 4, 2).reshape(N * M, 4, 2)

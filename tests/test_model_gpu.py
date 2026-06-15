@@ -34,14 +34,19 @@ def _make_inputs(n, t, device, d=D_MODEL):
 
 
 def _run_first_frame(model, x):
-    return model(x["coordinate_info"], x["spatial_info"], x["spatial_dist"],
-                 x["temporal_info"], first_frame=True)
+    return model(x["coordinate_info"], x["spatial_info"], x["spatial_dist"], x["temporal_info"], first_frame=True)
 
 
 def _run_temporal(model, x):
-    return model(x["coordinate_info"], x["spatial_info"], x["spatial_dist"],
-                 x["temporal_info"], x["temporal_dist"], x["tracked_feature"],
-                 first_frame=False)
+    return model(
+        x["coordinate_info"],
+        x["spatial_info"],
+        x["spatial_dist"],
+        x["temporal_info"],
+        x["temporal_dist"],
+        x["tracked_feature"],
+        first_frame=False,
+    )
 
 
 def test_model_first_frame_forward_cpu():

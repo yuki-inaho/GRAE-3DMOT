@@ -17,8 +17,19 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-CORE_MODULES = ["numpy", "scipy", "shapely", "pyquaternion", "torch", "torchvision",
-                "pandas", "matplotlib", "tensorboard", "lap", "fvcore"]
+CORE_MODULES = [
+    "numpy",
+    "scipy",
+    "shapely",
+    "pyquaternion",
+    "torch",
+    "torchvision",
+    "pandas",
+    "matplotlib",
+    "tensorboard",
+    "lap",
+    "fvcore",
+]
 
 
 def _check_imports() -> list[str]:
@@ -81,8 +92,10 @@ def _check_self_contained_ops() -> list[str]:
         from models.structures.boxes import BBox
         from ops.simpletrack_nms import nms
 
-        d0 = BBox(x=0, y=0, z=0, h=1.5, w=2, l=4, o=0.0); d0.s = 0.9
-        d1 = BBox(x=0.1, y=0, z=0, h=1.5, w=2, l=4, o=0.0); d1.s = 0.5
+        d0 = BBox(x=0, y=0, z=0, h=1.5, w=2, l=4, o=0.0)
+        d0.s = 0.9
+        d1 = BBox(x=0.1, y=0, z=0, h=1.5, w=2, l=4, o=0.0)
+        d1.s = 0.5
         keep, _ = nms([d0, d1], [0, 0], threshold_low=0.1)
         print(f"[OK]   SimpleTrack NMS (2 overlapping -> kept {keep})")
     except Exception as exc:  # pragma: no cover - diagnostic
