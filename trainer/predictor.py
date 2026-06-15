@@ -4,7 +4,6 @@ import lap
 import tqdm
 import numpy as np
 
-from fvcore.common.timer import Timer
 from models.structures import Instances
 from nuscenes.nuscenes import NuScenes
 
@@ -30,6 +29,9 @@ class BasePredictor:
         self.alpha = 0.24 # detection accuracy
         self.conf_th = 0.12 # mathcing threshold
         self.age = 12  # trajectory age
+        self.high_cost_limit = 0.9
+        self.low_cost_limit = 0.8
+        self.emit_fresh_unmatched_tracks = True
         
         self.outputs = outputs
         self.save_notmatched_track = False
@@ -290,7 +292,9 @@ class BasePredictor:
                     high_cost = high_affinity_score
 
                     _, row_ind, col_ind = lap.lapjv(
-                        1 - high_cost.detach().cpu().numpy(), extend_cost=True, cost_limit=0.9
+                        1 - high_cost.detach().cpu().numpy(),
+                        extend_cost=True,
+                        cost_limit=self.high_cost_limit,
                     )
                     track_instance_inds = track.instance_inds.clone()
                     det_instance_inds = torch.full([len(high_dets), 1], -2, dtype=torch.int64).to(self.device)
@@ -311,7 +315,9 @@ class BasePredictor:
                     low_cost = low_affinity_score
 
                     _, row_ind, col_ind = lap.lapjv(
-                        1 - low_cost.detach().cpu().numpy(), extend_cost=True, cost_limit=0.8
+                        1 - low_cost.detach().cpu().numpy(),
+                        extend_cost=True,
+                        cost_limit=self.low_cost_limit,
                     )
                     track_instance_inds = track.instance_inds.clone()
                     det_instance_inds = torch.full([len(low_dets), 1], -2, dtype=torch.int64).to(self.device)
@@ -359,19 +365,20 @@ class BasePredictor:
                 d_length = 500 - len(dets)
                 draw_track = draw_track[:d_length]
 
-                for idx in range(len(draw_track)):
-                    tracking_name = self.class_names[int(draw_track.classes[idx])]
-                    current_outputs = {
-                        "sample_token": sample_token,
-                        "translation": draw_track.translation[idx].cpu().numpy().tolist(),
-                        "size": draw_track.size[idx].cpu().numpy().tolist(),
-                        "rotation": draw_track.rotation[idx].cpu().numpy().tolist(),
-                        "velocity": draw_track.velocity[idx].cpu().numpy().tolist(),
-                        "tracking_id": str(draw_track.instance_inds[idx].cpu().numpy()),
-                        "tracking_name": tracking_name,
-                        "tracking_score": float(draw_track.score[idx].cpu().numpy()) * 0.1,
-                    }
-                    frame_anns.append(current_outputs)
+                if self.emit_fresh_unmatched_tracks:
+                    for idx in range(len(draw_track)):
+                        tracking_name = self.class_names[int(draw_track.classes[idx])]
+                        current_outputs = {
+                            "sample_token": sample_token,
+                            "translation": draw_track.translation[idx].cpu().numpy().tolist(),
+                            "size": draw_track.size[idx].cpu().numpy().tolist(),
+                            "rotation": draw_track.rotation[idx].cpu().numpy().tolist(),
+                            "velocity": draw_track.velocity[idx].cpu().numpy().tolist(),
+                            "tracking_id": str(draw_track.instance_inds[idx].cpu().numpy()),
+                            "tracking_name": tracking_name,
+                            "tracking_score": float(draw_track.score[idx].cpu().numpy()) * 0.1,
+                        }
+                        frame_anns.append(current_outputs)
 
                 track.ct = track.pred_ct.clone()
                 track = Instances.cat([dets, track])

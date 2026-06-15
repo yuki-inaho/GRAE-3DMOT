@@ -7,7 +7,7 @@
 - **プロジェクト名称・領域:** GRAE-3DMOT — Geometry Relation-Aware Encoder for Online 3D Multi-Object Tracking（nuScenes 上の3次元多物体追跡 / CVPR 2025 のbeta実装）。
 - **最終成果物:** 元の研究リポジトリ（conda + PyTorch 1.9 + 外部CUDA拡張前提）を、**外部依存を同梱せず（self-contained）**・**uv管理**・**CUDA 12.8 のGPUで動く**形に移行した実行環境一式と、それを保証するテスト/型/フォーマットの仕組み。
 - **ビジネス背景・価値:** 開発機のGPUが **NVIDIA RTX PRO 4000 Blackwell（compute capability sm_120）** で、元構成（`torch==1.9.0+cu111`）では物理的に起動できない。再現・改良のため、submodule/外部cloneに頼らず誰でも `uv sync` 一発で動かせる状態にすることが価値。
-- **現時点の進捗サマリ:** 移行完了。`uv run pytest` 50件pass、`uv run ty check` クリーン、GPU上でモデルの forward/backward と前処理opsを実機検証済み。デフォルトブランチは `cu128`。**唯一未実施なのは実nuScenesデータ + CenterPoint検出JSONを使った全量の前処理〜学習の通し実行**（データが手元に無いため。コードパスは合成データで検証済み）。
+- **現時点の進捗サマリ:** 移行完了。`uv run pytest` 52件pass、`uv run ty check` クリーン、GPU上でモデルの forward/backward と前処理opsを実機検証済み。デフォルトブランチは `cu128`。TVA NYX650 pseudo-3D smokeでは30フレーム全検出の10epoch短時間学習と推論まで確認済みで、strict tracker条件ではbbox3d match fraction 1.0 / dominant GT track purity median 0.9564。**唯一未実施なのは実nuScenesデータ + CenterPoint検出JSONを使った全量の前処理〜学習の通し実行**（データが手元に無いため。コードパスは合成データとTVA pseudo-3D smokeで検証済み）。
 
 ## 2. クリティカルな要求・制約
 > 「壊してはいけない」品質・仕様ラインです。
@@ -27,6 +27,8 @@
 | 自前ops（要求の中核） | [`ops/iou3d_nms_cuda.py`](../ops/iou3d_nms_cuda.py), [`ops/simpletrack_nms.py`](../ops/simpletrack_nms.py) | CenterPoint BEV IoU / SimpleTrack NMS の self-contained 実装 |
 | テスト資産 | [`tests/`](../tests/) | 単体・回帰・型強制・GPUテスト（`test_iou3d_bev` / `test_simpletrack_nms` / `test_device_and_env` / `test_model_gpu` / `test_regression` / `test_typing`） |
 | 環境診断 | [`scripts/check_environment.py`](../scripts/check_environment.py) | 依存import・CUDA12.8・GPU・self-contained opsのスモーク確認 |
+| TVA pseudo-3D推論 | [`scripts/run_tva_pseudo_inference.py`](../scripts/run_tva_pseudo_inference.py), [`config/tva_nyx650_pseudo_smoke_alltracks_10epoch.json`](../config/tva_nyx650_pseudo_smoke_alltracks_10epoch.json) | TVA pseudo-3D checkpointの推論、bbox3d照合、tracklet purity検証、後段可視化用tracking JSON出力 |
+| Tracking JSON schema | [`schemas/grae_tracking_result_v1.schema.json`](../schemas/grae_tracking_result_v1.schema.json) | 画像群とbbox検出結果を使ったGRAE tracking出力の正規化schema |
 | オンボーディング | [`docs/ONBOARDING.md`](ONBOARDING.md) | 本ファイル。新任エージェント向けの要求・制約・運用ルールの集約 |
 | 既知課題 | 本ファイル §2・§4 と README 内の注記 | 専用の課題管理表は未整備（TBD）。重要事項は本ドキュメントに集約 |
 
@@ -54,8 +56,9 @@
 
 ## 6. 試行タスク（オンボーディング演習）
 1. `uv sync` 後に `uv run python scripts/check_environment.py` を実行し、`CUDA build 12.8` / `Blackwell` / 自前opsOK を確認する。
-2. `uv run pytest -q` と `uv run ty check` を実行し、50件pass・型チェッククリーンを確認する。失敗時はどのテストがどの契約を守っているか説明する。
+2. `uv run pytest -q` と `uv run ty check` を実行し、52件pass・型チェッククリーンを確認する。失敗時はどのテストがどの契約を守っているか説明する。
 3. `ops/iou3d_nms_cuda.py` の `boxes_iou_bev` に対し、誤った形状のテンソルを渡すと `TypeCheckError` が出ることを再現し、jaxtyping+beartype の役割を一段落で説明する。
+4. TVA pseudo-3D smokeを使う場合は、`scripts/run_tva_pseudo_inference.py` の summary JSON で `passed_basic_tracklet_checks` と `dominant_gt_track_purity` を確認し、`--tracking-json` で `grae_3dmot.tracking_result/v1` を出力する。
 
 ## 7. 運用ルール・変更管理
 - **ドキュメント更新時の記載ルール:** コード変更で前提が変わったら README と本 ONBOARDING を同時更新。事実はコード/テストで裏取りしてから書く。
@@ -66,7 +69,7 @@
 ---
 
 ### 付録: 参考情報
-- **主要リポジトリ/ディレクトリ:** `yuki-inaho/GRAE-3DMOT`（default: `cu128`）。`ops/`（自前ops）, `models/`（GRAEモデル）, `trainer/`, `dataset/`, `tools/convert_dataset.py`（前処理）, `tests/`, `scripts/`。
+- **主要リポジトリ/ディレクトリ:** `GRAE-3DMOT`（default: `cu128`）。`ops/`（自前ops）, `models/`（GRAEモデル）, `trainer/`, `dataset/`, `tools/convert_dataset.py`（前処理）, `tests/`, `scripts/`。
 - **代表的なコマンド:**
   ```shell
   uv sync                         # 環境構築（Python3.10 + torch cu128）
@@ -76,9 +79,17 @@
   uv run ty check                 # 静的型チェック（型付きモジュール限定）
   uv run ruff format              # フォーマット
   uv run python single_gpu_train.py --device cuda:0   # 単一GPU学習（要データ）
+  export TVA_GRAE_BBOX3D_JSONL=/path/to/bbox3d_tva_nyx650_pseudo3d_smoke_alltracks.jsonl
+  uv run python scripts/run_tva_pseudo_inference.py \
+    --config config/tva_nyx650_pseudo_smoke_alltracks_10epoch.json \
+    --checkpoint outputs/tva_nyx650_pseudo_smoke_alltracks_10epoch/tva_nyx650_pseudo_smoke_alltracks_10epoch/models/checkpoint-epoch9.pth \
+    --ann-file data/tva_nyx650/grae_train_tva_nyx650_pseudo3d_smoke_alltracks.pickle \
+    --tracking-json outputs/tva_nyx650_pseudo_smoke_alltracks_10epoch/tva_nyx650_pseudo_smoke_alltracks_10epoch/inference_sweep/strict05_tracking_result.json \
+    --require-bbox3d-validation \
+    --high-cost-limit 0.5 --low-cost-limit 0.5 --no-emit-fresh-unmatched-tracks
   ```
 - **依存ライブラリ:** torch 2.8.0+cu128 / torchvision 0.23.0+cu128、numpy(<2)/scipy/shapely/pyquaternion、jaxtyping+beartype（実行時型検査）、fvcore/lapx/pandas/matplotlib/tensorboard、（任意）nuscenes-devkit/motmetrics、dev: pytest/ty/ruff。
 - **環境前提:** Linux x86_64、NVIDIA Blackwell（sm_120）等 CUDA 12.8 対応GPU。`nvcc` 不要（cu128 wheel同梱ランタイムを使用）。
-- **連絡先/責任者:** リポジトリオーナー（yuki-inaho）。
+- **連絡先/責任者:** リポジトリオーナー。
 
 > ※テンプレートは必要に応じて拡張・縮退して構いません。記入済みドキュメントはバージョン管理してください。

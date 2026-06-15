@@ -1,0 +1,33 @@
+{
+    "name": "tva_nyx650_pseudo_smoke_alltracks_10epoch",
+    "arch": {
+        "type": "GRAE",
+        "args": {
+            "in_channels": 128,
+            "layers": 3,
+            "device": "cuda:0"
+        }
+    },
+    "train_dataset": {
+        "type": "NusceneseDataset",
+        "args": {
+            "ann_file": "data/tva_nyx650/grae_train_tva_nyx650_pseudo3d_smoke_alltracks.pickle"
+        }
+    },
+    "optimizer": {
+        "type": "AdamW",
+        "args": {
+            "lr": 0.0002,
+            "weight_decay": 0.002
+        }
+    },
+    "trainer": {
+        "epochs": 10,
+        "save_dir": "./outputs/tva_nyx650_pseudo_smoke_alltracks_10epoch/",
+        "nusc_path": "data/nuscenes",
+        "save_period": 1,
+        "verbosity": 2,
+        "log_step": 14,
+        "tensorboard": false
+    }
+}

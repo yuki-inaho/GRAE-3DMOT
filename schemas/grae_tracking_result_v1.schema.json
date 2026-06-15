@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "grae_3dmot.tracking_result/v1",
+  "title": "GRAE-3DMOT Tracking Result",
+  "type": "object",
+  "required": ["schema", "coordinate_frame", "source", "tracker_params", "frames", "tracks"],
+  "properties": {
+    "schema": {
+      "const": "grae_3dmot.tracking_result/v1"
+    },
+    "schema_file": {
+      "type": "string"
+    },
+    "coordinate_frame": {
+      "type": "object"
+    },
+    "source": {
+      "type": "object"
+    },
+    "tracker_params": {
+      "type": "object"
+    },
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["frame_index", "sample_token", "timestamp", "image", "detections"],
+        "properties": {
+          "frame_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sample_token": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": ["number", "null"]
+          },
+          "image": {
+            "type": "object",
+            "required": ["image_id", "file_name"],
+            "properties": {
+              "image_id": {
+                "type": ["integer", "null"]
+              },
+              "file_name": {
+                "type": ["string", "null"]
+              }
+            }
+          },
+          "detections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "track_id",
+                "class_id",
+                "class_name",
+                "score",
+                "bbox",
+                "bbox3d",
+                "source_detection"
+              ],
+              "properties": {
+                "track_id": {
+                  "type": "string"
+                },
+                "class_id": {
+                  "type": "integer"
+                },
+                "class_name": {
+                  "type": "string"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "bbox": {
+                  "type": "object",
+                  "required": ["xywh", "xyxy", "source"],
+                  "properties": {
+                    "xywh": {
+                      "type": ["array", "null"],
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    "xyxy": {
+                      "type": ["array", "null"],
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    "source": {
+                      "type": ["string", "null"]
+                    }
+                  }
+                },
+                "bbox3d": {
+                  "type": "object",
+                  "required": ["translation", "size", "rotation", "velocity"],
+                  "properties": {
+                    "translation": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "size": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    "velocity": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    }
+                  }
+                },
+                "source_detection": {
+                  "type": ["object", "null"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "track_id",
+          "frame_count",
+          "first_frame_index",
+          "last_frame_index",
+          "mean_score",
+          "dominant_input_track_id",
+          "dominant_input_track_purity"
+        ]
+      }
+    }
+  }
+}
