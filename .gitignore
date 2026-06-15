@@ -175,3 +175,9 @@ cython_debug/
 
 # Scratch / working notes (not part of the project)
 temp/
+
+# Generated TVA/GRAE experiment artifacts
+data/
+outputs/
+*.pth
+*.pickle

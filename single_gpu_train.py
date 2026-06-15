@@ -62,7 +62,8 @@ def main(opts, config):
     cfg_trainer = config['trainer']
     writer = TensorboardWriter(config.log_dir, logger, cfg_trainer['tensorboard'])
     train_loss_metrics = []
-    for i in range(0, 4):
+    # SingleTrainer samples 8 frames and emits losses for frame_1 through frame_7.
+    for i in range(0, 7):
         train_loss_metrics.append(f'frame_{i + 1}_loss_affinity')
         train_loss_metrics.append(f'frame_{i + 1}_loss_attention')
         train_loss_metrics.append(f'frame_{i + 1}_loss_dn_affinity')
