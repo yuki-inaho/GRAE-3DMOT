@@ -7,11 +7,18 @@ without pulling in the data-loading stack.
 from __future__ import annotations
 
 import torch
+from beartype import beartype
 
 __all__ = ["resolve_device"]
 
 
-def resolve_device(requested=None, config_device="cuda:0", cuda_available=None, set_device=True):
+@beartype
+def resolve_device(
+    requested: str | None = None,
+    config_device: str = "cuda:0",
+    cuda_available: bool | None = None,
+    set_device: bool = True,
+) -> torch.device:
     """Resolve a torch device, honouring an explicit request over the config default.
 
     Args:

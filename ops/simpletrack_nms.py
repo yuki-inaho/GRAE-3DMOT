@@ -19,12 +19,22 @@ change being ``np.int`` -> ``np.int64`` for NumPy >= 1.24 compatibility).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
+from beartype import beartype
+from jaxtyping import Float, Int, jaxtyped
 from pyquaternion import Quaternion
 
 from models.structures.boxes import BBox, iou3d
 
 __all__ = ["nms", "nu_array2mot_bbox", "BBoxCoarseFilter", "weird_bbox"]
+
+typecheck = jaxtyped(typechecker=beartype)
+
+# A nuScenes detection row: [x, y, z, w, l, h, qw, qx, qy, qz] (+ optional score).
+DetArray = Float[np.ndarray, "d"]
+InstTypes = Int[np.ndarray, "n"] | Sequence[int]
 
 
 class BBoxCoarseFilter:
@@ -77,11 +87,21 @@ class BBoxCoarseFilter:
         self.bbox_dict = dict()
 
 
-def weird_bbox(bbox):
-    return bbox.l <= 0 or bbox.w <= 0 or bbox.h <= 0
+@typecheck
+def weird_bbox(bbox: BBox) -> bool:
+    if bbox.l is None or bbox.w is None or bbox.h is None:
+        return True
+    return bool(bbox.l <= 0 or bbox.w <= 0 or bbox.h <= 0)
 
 
-def nms(dets, inst_types, threshold_low=0.1, threshold_high=1.0, threshold_yaw=0.3):
+@typecheck
+def nms(
+    dets: Sequence[BBox],
+    inst_types: InstTypes,
+    threshold_low: float = 0.1,
+    threshold_high: float = 1.0,
+    threshold_yaw: float = 0.3,
+) -> tuple[list, list]:
     """Keep the bboxes with overlap <= threshold (SimpleTrack pre-processing NMS).
 
     Args:
@@ -161,7 +181,8 @@ def nms(dets, inst_types, threshold_low=0.1, threshold_high=1.0, threshold_yaw=0
     return result_indexes, result_types
 
 
-def nu_array2mot_bbox(b):
+@typecheck
+def nu_array2mot_bbox(b: DetArray) -> BBox:
     """Convert a nuScenes detection array to a :class:`BBox`.
 
     ``b`` is ``[x, y, z, w, l, h, qw, qx, qy, qz]`` (+ optional score as the 11th

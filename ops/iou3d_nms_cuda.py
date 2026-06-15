@@ -29,11 +29,25 @@ import math
 
 import numpy as np
 import torch
+from beartype import beartype
+from jaxtyping import Bool, Float, jaxtyped
 from shapely.geometry import Polygon
+from torch import Tensor
 
 __all__ = ["boxes_iou_bev_cpu", "boxes_iou_bev", "boxes_bev_iou"]
 
 _EPS = 1e-9
+
+# Runtime shape/dtype checking: jaxtyping binds the named dims (n, m, p, ...)
+# per call and beartype enforces them, so a wrong-shaped tensor raises instead
+# of silently producing garbage.
+typecheck = jaxtyped(typechecker=beartype)
+
+# Boxes are [x, y, z, dx, dy, dz, heading]; only x, y, dx, dy, heading are used.
+Boxes = Float[Tensor, "n 7"]
+BoxesA = Float[Tensor, "n 7"] | Float[np.ndarray, "n 7"]
+BoxesB = Float[Tensor, "m 7"] | Float[np.ndarray, "m 7"]
+IoUMatrix = Float[Tensor, "n m"]
 
 
 # --------------------------------------------------------------------------- #
@@ -52,7 +66,8 @@ def _bev_corners_np(box) -> np.ndarray:
     )
 
 
-def boxes_iou_bev_cpu(boxes_a, boxes_b, ans_iou=None):
+@typecheck
+def boxes_iou_bev_cpu(boxes_a: BoxesA, boxes_b: BoxesB, ans_iou: IoUMatrix | None = None) -> IoUMatrix:
     """BEV IoU between ``boxes_a[i]`` and ``boxes_b[j]`` (exact shapely reference).
 
     Supports both calling conventions:
@@ -97,8 +112,9 @@ def boxes_iou_bev_cpu(boxes_a, boxes_b, ans_iou=None):
 # --------------------------------------------------------------------------- #
 # Vectorised PyTorch implementation (CPU + CUDA)                              #
 # --------------------------------------------------------------------------- #
-def _corners_torch(boxes: torch.Tensor) -> torch.Tensor:
-    """``[..., 7]`` boxes -> ``[..., 4, 2]`` CCW BEV corners."""
+@typecheck
+def _corners_torch(boxes: Float[Tensor, "n 7"]) -> Float[Tensor, "n 4 2"]:
+    """``[n, 7]`` boxes -> ``[n, 4, 2]`` CCW BEV corners."""
     x, y = boxes[..., 0], boxes[..., 1]
     dx, dy, ang = boxes[..., 3], boxes[..., 4], boxes[..., 6]
     cos, sin = torch.cos(ang), torch.sin(ang)
@@ -111,11 +127,9 @@ def _corners_torch(boxes: torch.Tensor) -> torch.Tensor:
     return torch.stack([px, py], dim=-1)  # [..., 4, 2]
 
 
-def _point_in_poly(pts: torch.Tensor, poly: torch.Tensor) -> torch.Tensor:
-    """Whether ``pts[..., 2]`` lie inside the CCW convex ``poly[..., 4, 2]``.
-
-    ``pts`` has shape ``[P, K, 2]`` and ``poly`` ``[P, 4, 2]``; returns ``[P, K]`` bool.
-    """
+@typecheck
+def _point_in_poly(pts: Float[Tensor, "p k 2"], poly: Float[Tensor, "p 4 2"]) -> Bool[Tensor, "p k"]:
+    """Whether ``pts`` lie inside the CCW convex ``poly``; returns ``[p, k]`` bool."""
     v0 = poly.unsqueeze(1)                       # [P, 1, 4, 2]
     v1 = torch.roll(poly, shifts=-1, dims=1).unsqueeze(1)  # [P, 1, 4, 2]
     edge = v1 - v0                               # [P, 1, 4, 2]
@@ -124,10 +138,13 @@ def _point_in_poly(pts: torch.Tensor, poly: torch.Tensor) -> torch.Tensor:
     return (cross >= -1e-6).all(dim=-1)          # CCW: inside => all left turns
 
 
-def _seg_intersections(poly_a: torch.Tensor, poly_b: torch.Tensor):
-    """All pairwise edge intersections between two ``[P, 4, 2]`` polygons.
+@typecheck
+def _seg_intersections(
+    poly_a: Float[Tensor, "p 4 2"], poly_b: Float[Tensor, "p 4 2"]
+) -> tuple[Float[Tensor, "p 16 2"], Bool[Tensor, "p 16"]]:
+    """All pairwise edge intersections between two ``[p, 4, 2]`` polygons.
 
-    Returns ``(points [P, 16, 2], valid [P, 16])``.
+    Returns ``(points [p, 16, 2], valid [p, 16])``.
     """
     a0 = poly_a                                  # [P, 4, 2]
     a1 = torch.roll(poly_a, shifts=-1, dims=1)
@@ -152,8 +169,9 @@ def _seg_intersections(poly_a: torch.Tensor, poly_b: torch.Tensor):
     return pts.reshape(P, 16, 2), valid.reshape(P, 16)
 
 
-def _pairwise_intersection_area(poly_a: torch.Tensor, poly_b: torch.Tensor) -> torch.Tensor:
-    """Convex intersection area for paired polygons ``[P, 4, 2]`` -> ``[P]``."""
+@typecheck
+def _pairwise_intersection_area(poly_a: Float[Tensor, "p 4 2"], poly_b: Float[Tensor, "p 4 2"]) -> Float[Tensor, "p"]:
+    """Convex intersection area for paired polygons ``[p, 4, 2]`` -> ``[p]``."""
     P = poly_a.shape[0]
     in_a = _point_in_poly(poly_a, poly_b)         # corners of A inside B  [P, 4]
     in_b = _point_in_poly(poly_b, poly_a)         # corners of B inside A  [P, 4]
@@ -186,7 +204,8 @@ def _pairwise_intersection_area(poly_a: torch.Tensor, poly_b: torch.Tensor) -> t
     return torch.where(n_valid >= 3, area, torch.zeros_like(area))
 
 
-def boxes_iou_bev(boxes_a: torch.Tensor, boxes_b: torch.Tensor, ans_iou: torch.Tensor | None = None):
+@typecheck
+def boxes_iou_bev(boxes_a: Boxes, boxes_b: Float[Tensor, "m 7"], ans_iou: IoUMatrix | None = None) -> IoUMatrix:
     """Vectorised BEV IoU that runs on CPU and CUDA tensors.
 
     Args:

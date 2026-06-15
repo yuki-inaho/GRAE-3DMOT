@@ -57,16 +57,28 @@ uv sync --extra nuscenes
   `nu_array2mot_bbox`, reusing the `BBox` / `iou3d` primitives already vendored in
   `models/structures/boxes.py`.
 
-## Tests
+## Tests & type checking
 
 ```shell
-uv run pytest
+uv run pytest        # unit + regression tests
+uv run ty check      # static type checking (Astral ty) on the typed modules
 ```
 
-The suite covers the BEV IoU op (CPU reference vs. vectorised torch, plus a GPU
-path), the SimpleTrack NMS port, device resolution, the CUDA 12.8 build, and a
-forward/backward pass of the GRAE model on the GPU. GPU tests are skipped
-automatically when no CUDA device is present.
+The suite covers the BEV IoU op (CPU reference vs. vectorised torch vs. golden
+values, plus a GPU path), the SimpleTrack NMS port, device resolution, the
+CUDA 12.8 build, and a forward/backward pass of the GRAE model on the GPU.
+`tests/test_regression.py` pins hard-coded golden IoU/NMS values, and
+`tests/test_typing.py` asserts the runtime contracts described below actually
+fire. GPU tests are skipped automatically when no CUDA device is present.
+
+### Typed, shape-checked ops
+
+The self-contained ops in [`ops/`](ops/) (and `utils/device.py`) are annotated
+with [jaxtyping](https://github.com/patrick-kidger/jaxtyping) tensor shapes and
+enforced at runtime with [beartype](https://github.com/beartype/beartype): e.g.
+`boxes_iou_bev(a: Float[Tensor, "n 7"], b: Float[Tensor, "m 7"]) -> Float[Tensor, "n m"]`.
+Passing a wrong-shaped tensor raises immediately instead of silently producing
+garbage. `uv run ty check` provides the complementary static layer.
 
 ## Legacy conda setup (original PyTorch 1.9.0 / CUDA 11.1)
 

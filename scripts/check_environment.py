@@ -36,6 +36,7 @@ def _check_imports() -> list[str]:
 
 def _check_cuda() -> list[str]:
     import torch
+    import torch.version  # noqa: F401  (ensure torch.version submodule is resolved)
 
     failures = []
     print(f"\nPyTorch CUDA build : {torch.version.cuda}")

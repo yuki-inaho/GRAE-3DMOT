@@ -11,6 +11,9 @@ dependencies = [
     "shapely>=2.0",
     "pyquaternion>=0.9.9",
     "tqdm>=4.64",
+    # --- runtime-enforced shape/type checking on the self-contained ops ---
+    "jaxtyping>=0.2.34",
+    "beartype>=0.18",
     # --- deep learning (CUDA 12.8 wheels resolved from the pytorch-cu128 index) ---
     "torch>=2.7,<2.9",
     "torchvision>=0.22,<0.24",
@@ -34,6 +37,7 @@ nuscenes = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "ty>=0.0.1",
 ]
 
 [tool.uv]
@@ -61,3 +65,17 @@ addopts = "-ra"
 [tool.ruff]
 target-version = "py310"
 line-length = 120
+
+# `ty` (Astral type checker) is scoped to the modules carrying real type hints;
+# the legacy research code is intentionally left out so `uv run ty check` is
+# actionable rather than drowning in pre-existing untyped-code noise.
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.src]
+include = [
+    "ops",
+    "utils/device.py",
+    "utils/data_util.py",
+    "scripts/check_environment.py",
+]
