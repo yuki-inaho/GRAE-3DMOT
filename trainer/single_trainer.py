@@ -23,7 +23,8 @@ class SingleTrainer:
                  log_step,
                  writer,
                  logger,
-                 device):
+                 device,
+                 epochs=31):
         self.device = device
         self.model = model
 
@@ -32,7 +33,7 @@ class SingleTrainer:
         self.train_metrics = metrics
         self.train_sampler = sampler
         self.start_epoch = 0
-        self.end_epoch = 31
+        self.end_epoch = epochs
         self.global_step_time = timer
 
         self.checkpoint_dir = checkpoint_dir

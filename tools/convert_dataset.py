@@ -1,21 +1,24 @@
+import os
+import sys
+
 import torch
 import numpy as np
 import pickle
 import json
 import tqdm
-import iou3d_nms_cuda
 from scipy.optimize import linear_sum_assignment
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.splits import create_splits_scenes
 
-from mmdet3d.core.bbox import LiDARInstance3DBoxes
-from mmdet3d.core.bbox import get_box_type
 from nuscenes.eval.common.utils import Quaternion
 from nuscenes.eval.common.utils import quaternion_yaw
 from nuscenes.eval.tracking.utils import category_to_tracking_name
 
-from SimpleTrack.data_loader.nuscenes_loader import nu_array2mot_bbox
-from mot_3d.preprocessing import nms
+# Self-contained replacements for the former external dependencies
+# (CenterPoint iou3d_nms CUDA op and SimpleTrack); see ops/ for details.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ops import iou3d_nms_cuda
+from ops.simpletrack_nms import nu_array2mot_bbox, nms
 
 CLASSES = [
     'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
@@ -31,9 +34,6 @@ NuScenesClasses = {
     'trailer' : 5,
     'truck' : 6,
 }
-
-box_type_3d = 'LIDAR'
-box_mode_3d = get_box_type(box_type_3d)
 
 def simpletrack_nms(frame_det_data, iou_threshold=0.1):
     boxes = np.concatenate([frame_det_data['translation'],
@@ -191,7 +191,7 @@ def convert_detection_result(nusc, scenes, sequences_by_name, m='train'):
                 'rotation': np.array(gt_rot, dtype=np.float32), # [M, 4]
                 'class': np.array(gt_class, dtype=np.int32), # [M]
                 'tracking_id': gt_track_token, # [M]
-                'next_exist': np.array(gt_next_exist, dtype=np.bool), # [M]
+                'next_exist': np.array(gt_next_exist, dtype=np.bool_), # [M]
                 'next_translation': np.array(gt_next_trans, dtype=np.float32), # [M, 3]
                 'next_size': np.array(gt_next_size, dtype=np.float32), # [M, 3]
                 'next_yaw': np.array(gt_next_yaw, dtype=np.float32), # [M, 1]
@@ -256,8 +256,7 @@ def convert_detection_result(nusc, scenes, sequences_by_name, m='train'):
 
             cls_valid_mask = torch.eq(det_cls.unsqueeze(1), gt_cls.unsqueeze(0))
 
-            iou = torch.FloatTensor(torch.Size((pred_tensor_boxes.shape[0], gt_tensor_boxes.shape[0]))).zero_()
-            iou3d_nms_cuda.boxes_iou_bev_cpu(pred_tensor_boxes.contiguous(), gt_tensor_boxes.contiguous(), iou)
+            iou = iou3d_nms_cuda.boxes_iou_bev_cpu(pred_tensor_boxes.contiguous(), gt_tensor_boxes.contiguous())
 
             iou_valid_mask = iou > 0
 
@@ -334,7 +333,7 @@ def convert_detection_result(nusc, scenes, sequences_by_name, m='train'):
 
             matches = np.array(match) #.view(-1, 2).long()
 
-            prediction_tracking_id = - np.ones(num_det, dtype=np.int)
+            prediction_tracking_id = - np.ones(num_det, dtype=np.int32)
             gt_tracking_id = np.array(ground_truth['tracking_id'])
 
             if len(matches) > 0:
@@ -343,7 +342,7 @@ def convert_detection_result(nusc, scenes, sequences_by_name, m='train'):
 
             if len(matches) > 0:
                 matched_gt_next_exist = np.array(gt_next_exist[matches[:, 1]])
-                prediction_next_exist = np.zeros(num_det, dtype=np.bool)
+                prediction_next_exist = np.zeros(num_det, dtype=np.bool_)
                 prediction_next_exist[matches[:, 0]] = matched_gt_next_exist
 
             detections['e2g_r'] = frame_result['e2g_r']

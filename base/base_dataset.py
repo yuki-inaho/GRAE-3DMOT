@@ -132,12 +132,9 @@ class BaseDataset(Dataset):
             # iou = iou3d_nms_utils.boxes_iou_bev_cpu(det_box, gt_box)
             # iou_gpu = iou3d_nms_utils.boxes_iou_bev(det_box.cuda(), gt_box.cuda())
 
-            import iou3d_nms_cuda
+            from ops import iou3d_nms_cuda
             assert det_box.shape[1] == gt_box.shape[1] == 7
-            iou = torch.FloatTensor(torch.Size((det_box.shape[0], gt_box.shape[0]))).zero_()
-
-            iou3d_nms_cuda.boxes_iou_bev_cpu(det_box.contiguous(), gt_box.contiguous(), iou)
-
+            iou = iou3d_nms_cuda.boxes_iou_bev_cpu(det_box.contiguous(), gt_box.contiguous())
 
             iou_valid_mask = iou > 0
             valid_mask = torch.logical_and(cls_valid_mask, iou_valid_mask)

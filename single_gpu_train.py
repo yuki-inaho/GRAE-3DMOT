@@ -21,6 +21,7 @@ from fvcore.common.timer import Timer
 import models as module_arch
 from torch.utils.data import DataLoader, RandomSampler
 from utils import mot_collate_fn
+from utils.device import resolve_device
 
 from trainer.single_trainer import SingleTrainer as BaseTrainer
 
@@ -34,13 +35,15 @@ def get_args_parser():
     parser.add_argument('--rank', type=int, default=0)
     parser.add_argument('--vis_step', type=int, default=10)
     parser.add_argument('--num_workers', type=int, default=16)
-    parser.add_argument('--gpu_ids', nargs="+", default=['0', '1', '2', '3'])
+    parser.add_argument('--gpu_ids', nargs="+", default=['0'])
+    parser.add_argument('--device', default=None, type=str,
+                        help='single-GPU device, e.g. cuda:0 or cpu (default: config arch.args.device)')
     parser.add_argument('--local_rank', type=int)
     return parser
 
 
 def main(opts, config):
-    local_gpu_id = 1
+    device = resolve_device(opts.device, config['arch']['args'].get('device', 'cuda:0'))
     train_dataset = NusceneseDataset(config['train_dataset']['args']['ann_file'])
     train_sampler = RandomSampler(train_dataset)
     batch_sampler_train = torch.utils.data.BatchSampler(train_sampler, batch_size=1, drop_last=True)
@@ -50,8 +53,8 @@ def main(opts, config):
                                   num_workers=0,
                                   pin_memory=True)
     model = config.init_obj('arch', module_arch)
-    
-    model = model.cuda(local_gpu_id)
+
+    model = model.to(device)
 
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
@@ -76,8 +79,6 @@ def main(opts, config):
     log_step = config['trainer']['log_step']
     checkpoint_dir = config.save_dir
 
-    device = "cuda:{}".format(local_gpu_id)
-
     trainer = BaseTrainer(
         model,
         optimizer=optimizer,
@@ -90,7 +91,8 @@ def main(opts, config):
         log_step=log_step,
         writer=writer,
         logger=logger,
-        device=device)
+        device=device,
+        epochs=cfg_trainer['epochs'])
 
     trainer.run()
 

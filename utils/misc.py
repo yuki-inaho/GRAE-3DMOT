@@ -471,23 +471,12 @@ def accuracy(output, target, topk=(1,)):
 def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corners=None):
     # type: (Tensor, Optional[List[int]], Optional[float], str, Optional[bool]) -> Tensor
     """
-    Equivalent to nn.functional.interpolate, but with support for empty batch sizes.
-    This will eventually be supported natively by PyTorch, and this
-    class can go away.
+    Equivalent to nn.functional.interpolate. Modern PyTorch (>=1.5) supports
+    empty batch sizes natively, so the old torchvision version-gated shim is no
+    longer required (and the string-prefix version check broke for torchvision
+    versions with a two-digit minor, e.g. "0.23").
     """
-    if float(torchvision.__version__[:3]) < 0.7:
-        if input.numel() > 0:
-            return torch.nn.functional.interpolate(
-                input, size, scale_factor, mode, align_corners
-            )
-
-        output_shape = _output_size(2, input, size, scale_factor)
-        output_shape = list(input.shape[:-2]) + list(output_shape)
-        if float(torchvision.__version__[:3]) < 0.5:
-            return _NewEmptyTensorOp.apply(input, output_shape)
-        return _new_empty_tensor(input, output_shape)
-    else:
-        return torchvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)
+    return torch.nn.functional.interpolate(input, size, scale_factor, mode, align_corners)
 
 
 def get_total_grad_norm(parameters, norm_type=2):
